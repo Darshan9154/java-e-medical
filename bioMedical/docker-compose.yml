@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysqldb:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysqldb:3306/userauth?useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    networks:
+      - biomedical-network
+    restart: always
+
+  mysqldb:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_DATABASE: userauth
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./biomedical.sql:/docker-entrypoint-initdb.d/biomedical.sql  # Load initial data
+    networks:
+      - biomedical-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+      start_period: 10s
+
+networks:
+  biomedical-network:
+
+volumes:
+  mysql-data:
+
