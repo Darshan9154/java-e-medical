@@ -1,0 +1,124 @@
+azureuser@master1:~$ ls
+biomedical-deployment.yaml  install.sh             mysql-pv.yaml
+biomedical-service.yaml     mysql-deployment.yaml  mysql-service.yaml
+azureuser@master1:~$ cat biomedical-deployment.yaml mysql-pv.yaml biomedical-service.yaml mysql-deployment.yaml mysql-service.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: biomedical-app
+  labels:
+    app: biomedical-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: biomedical-app
+  template:
+    metadata:
+      labels:
+        app: biomedical-app
+    spec:
+      containers:
+        - name: biomedical-app
+          image: darshanchaganti/biomedical-app
+          ports:
+            - containerPort: 8080
+          args:
+            - "--spring.datasource.url=jdbc:mysql://mysql:3306/userauth"
+            - "--spring.datasource.username=root"
+            - "--spring.datasource.password=root"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: biomedical-service
+spec:
+  selector:
+    app: biomedical-app
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080
+  type: NodePort
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /mnt/data/mysql
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+apiVersion: v1
+kind: Service
+metadata:
+  name: biomedical-service
+spec:
+  selector:
+    app: biomedical-app
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080
+  type: NodePort
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: darshanchaganti/mysql-biomedical
+          imagePullPolicy: Always
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: root
+            - name: MYSQL_DATABASE
+              value: biomedical
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: mysql-pvc
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+  type: ClusterIP
+azureuser@master1:~$
